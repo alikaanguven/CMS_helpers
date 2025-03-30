@@ -236,3 +236,21 @@ rucio add-rule user.aguven:/MET/Run2018D_missingFiles_part3/USER#0000 1 T2_AT_Vi
 rucio update-rule d13c8abbe6c140aeb54a98ecc24004b4 --lifetime 1
 rucio list-rules --account aguven > tmp.txt
 ```
+
+## Troubleshooting
+
+If you experience any errors check here:
+
+- Problem 1
+```shell
+[aguven@lxplus ~]$ rucio list-rules --account aguven > tmp.txt
+2025-03-30 12:16:50,771	WARNING	This method is being deprecated. Please replace your command with `rucio rule list`
+2025-03-30 12:16:50,872	ERROR	ConnectionError: HTTPSConnectionPool(host='cms-rucio-auth.cern.ch', port=443): Max retries exceeded with url: /auth/x509_proxy (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_CERTIFICATE_EXPIRED] ssl/tls alert certificate expired (_ssl.c:1129)')))
+2025-03-30 12:16:50,882	ERROR	ConnectionError: HTTPSConnectionPool(host='cms-rucio-auth.cern.ch', port=443): Max retries exceeded with url: /auth/x509_proxy (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_CERTIFICATE_EXPIRED] ssl/tls alert certificate expired (_ssl.c:1129)')))
+2025-03-30 12:16:50,895	ERROR	ConnectionError: HTTPSConnectionPool(host='cms-rucio-auth.cern.ch', port=443): Max retries exceeded with url: /auth/x509_proxy (Caused by SSLError(SSLError(1, '[SSL: SSLV3_ALERT_CERTIFICATE_EXPIRED] ssl/tls alert certificate expired (_ssl.c:1129)')))
+2025-03-30 12:16:50,895	ERROR	Cannot connect to the Rucio server.
+```
+Solution 1
+```shell
+voms-proxy-init -rfc -voms cms -valid 192:0
+```
