@@ -4,6 +4,7 @@ import glob
 from collections import Counter
 from DataFormats.FWLite import Lumis
 from tqdm import tqdm
+import concurrent.futures
 
 
 # Function to group sorted lumi numbers into contiguous ranges
@@ -53,8 +54,19 @@ def format_like_golden(lumiDict):
     lumiDict_str_keys = { str(run): ranges for run, ranges in lumiDict.items() }
     return lumiDict_str_keys
 
+def process_file(filename):
+    """Process a single file and return a dictionary of run numbers to a list of lumi sections."""
+    result = {}
+    for lumi in Lumis([filename]):
+        run = lumi.luminosityBlockAuxiliary().run()
+        lumiSection = lumi.luminosityBlockAuxiliary().luminosityBlock()
+        if run not in result:
+            result[run] = []
+        result[run].append(lumiSection)
+    return result
 
-def main(glob_patterns, output):
+
+def main(glob_patterns, output, nWorkers=1):
     """
     Iterates over a directory of MiniAODs, accumulates the luminostiy blocks and run numbers in a dictionary.
     """
@@ -62,17 +74,13 @@ def main(glob_patterns, output):
     for pattern in glob_patterns:
         files.extend(glob.glob(pattern, recursive=True))
     
-    
     lumiDict = {}
-    for lumi in tqdm(Lumis(files)):
-        run = lumi.luminosityBlockAuxiliary().run()
-        lumiSection = lumi.luminosityBlockAuxiliary().luminosityBlock()
-        
-        # Initialize the list if the run is not yet in the dictionary
-        if run not in lumiDict:
-            lumiDict[run] = []
-        lumiDict[run].append(lumiSection)
-
+    with concurrent.futures.ProcessPoolExecutor(max_workers=nWorkers) as executor:
+        for file_result in tqdm(executor.map(process_file, files), total=len(files), desc="Processing files"):
+            for run, lumis in file_result.items():
+                if run not in lumiDict:
+                    lumiDict[run] = []
+                lumiDict[run].extend(lumis)
 
     check_duplicates(lumiDict)
     group_contiguous(lumiDict)
@@ -98,5 +106,6 @@ if __name__ == '__main__':
                 '/eos/vbc/experiments/cms/store/user/aguven/JetMET1/Run2023D1_mini_v1/**/*.root',]
 
     output = "aggregatedLumis.json"
-    main(patterns, output)
+    nWorkers=8
+    main(patterns, output, nWorkers)
 
