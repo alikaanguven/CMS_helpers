@@ -66,6 +66,7 @@ def process_file(filename):
     return result
 
 
+
 def main(glob_patterns, output, nWorkers=1):
     """
     Iterates over a directory of MiniAODs, accumulates the luminostiy blocks and run numbers in a dictionary.
@@ -74,6 +75,18 @@ def main(glob_patterns, output, nWorkers=1):
     for pattern in glob_patterns:
         files.extend(glob.glob(pattern, recursive=True))
     
+    ## SINGLE THREADED
+    # lumiDict = {}
+    # for lumi in tqdm(Lumis(files)):
+    #     run = lumi.luminosityBlockAuxiliary().run()
+    #     lumiSection = lumi.luminosityBlockAuxiliary().luminosityBlock()
+    #     
+    #     # Initialize the list if the run is not yet in the dictionary
+    #     if run not in lumiDict:
+    #         lumiDict[run] = []
+    #     lumiDict[run].append(lumiSection)
+
+    ## MULTI-THREADED
     lumiDict = {}
     with concurrent.futures.ProcessPoolExecutor(max_workers=nWorkers) as executor:
         for file_result in tqdm(executor.map(process_file, files), total=len(files), desc="Processing files"):
@@ -91,21 +104,26 @@ def main(glob_patterns, output, nWorkers=1):
     # Write the result to a JSON file in a format similar to a Golden JSON
     with open(output, "w") as jsonFile:
         json.dump(lumiDict_str_keys, jsonFile, indent=1)
-    print("Aggregated JSON file has been saved as aggregatedLumis.json")
+    print(f"Aggregated JSON file has been saved as {output}")
 
     # Pretty print
     # for key, value in lumiDict_str_keys.items():
     #     print(f"'{key}': {value}")
 
 if __name__ == '__main__':
-    patterns = ['/eos/vbc/experiments/cms/store/user/aguven/JetMET0/Run2023B0_mini_v1/**/*.root',
-                '/eos/vbc/experiments/cms/store/user/aguven/JetMET1/Run2023B1_mini_v1/**/*.root',
-                '/eos/vbc/experiments/cms/store/user/aguven/JetMET0/Run2023C0_mini_v1/**/*.root',
-                '/eos/vbc/experiments/cms/store/user/aguven/JetMET1/Run2023C1_mini_v1/**/*.root',
-                '/eos/vbc/experiments/cms/store/user/aguven/JetMET0/Run2023D0_mini_v1/**/*.root',
-                '/eos/vbc/experiments/cms/store/user/aguven/JetMET1/Run2023D1_mini_v1/**/*.root',]
+    patterns0 = ['/eos/vbc/experiments/cms/store/user/aguven/JetMET0/Run2023B0_mini_v1/**/*.root',
+                 '/eos/vbc/experiments/cms/store/user/aguven/JetMET0/Run2023C0_mini_v1/**/*.root',
+                 '/eos/vbc/experiments/cms/store/user/aguven/JetMET0/Run2023D0_mini_v1/**/*.root',
+                 ]
 
-    output = "aggregatedLumis.json"
-    nWorkers=8
-    main(patterns, output, nWorkers)
+    patterns1 = ['/eos/vbc/experiments/cms/store/user/aguven/JetMET1/Run2023B1_mini_v1/**/*.root',
+                 '/eos/vbc/experiments/cms/store/user/aguven/JetMET1/Run2023C1_mini_v1/**/*.root',
+                 '/eos/vbc/experiments/cms/store/user/aguven/JetMET1/Run2023D1_mini_v1/**/*.root',
+                 ]
 
+    output = "jsons/aggregatedLumis0.json"
+    nWorkers=4
+    main(patterns0, output, nWorkers)
+
+    output = "jsons/aggregatedLumis1.json"
+    main(patterns1, output, nWorkers)
